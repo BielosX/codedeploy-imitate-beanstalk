@@ -1,0 +1,15 @@
+[Unit]
+Wants=network-online.target
+After=network-online.target cloud-final.service
+
+[Service]
+User=app
+Group=app
+
+Type=forking
+ExecStart=/home/app/server.sh
+PIDFile=/home/app/app.pid
+Restart=on-failure
+
+[Install]
+WantedBy=cloud-init.target

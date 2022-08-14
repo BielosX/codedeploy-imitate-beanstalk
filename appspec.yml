@@ -1,0 +1,31 @@
+version: 0.0
+os: linux
+files:
+  - source: systemd/app.service
+    destination: /etc/systemd/system
+  - source: src
+    destination: /home/app
+  - source: nginx.conf
+    destination: /etc/nginx
+  - source: requirements.txt
+    destination: /home/app
+  - source: fluent-bit.conf
+    destination: /etc/fluent-bit
+  - source: scripts/server.sh
+    destination: /home/app
+file_exists_behavior: OVERWRITE
+permissions:
+  - object: /home/app
+    pattern: server.sh
+    owner: app
+    group: app
+    mode: 777
+hooks:
+  BeforeInstall:
+    - location: scripts/create_users.sh
+    - location: scripts/stop_services.sh
+  AfterInstall:
+    - location: scripts/init_venv.sh
+    - location: scripts/start_services.sh
+  AfterAllowTestTraffic:
+    - location: scripts/test_connection.sh
