@@ -13,6 +13,8 @@ files:
     destination: /etc/fluent-bit
   - source: scripts/server.sh
     destination: /home/app
+  - source: systemd/journald.conf
+    destination: /etc/systemd
 file_exists_behavior: OVERWRITE
 permissions:
   - object: /home/app
@@ -26,6 +28,7 @@ hooks:
     - location: scripts/stop_services.sh
   AfterInstall:
     - location: scripts/init_venv.sh
+    - location: scripts/restart_journald.sh
     - location: scripts/start_services.sh
   AfterAllowTestTraffic:
     - location: scripts/test_connection.sh

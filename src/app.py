@@ -10,4 +10,5 @@ def health():
 
 @app.route("/hello")
 def hello():
+    print("Hello", flush=True)
     return "hello"

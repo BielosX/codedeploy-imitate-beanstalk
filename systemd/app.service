@@ -6,10 +6,17 @@ After=network-online.target cloud-final.service
 User=app
 Group=app
 
-Type=forking
-ExecStart=/home/app/server.sh
-PIDFile=/home/app/app.pid
+Type=simple
+ExecStart=/home/app/env/bin/gunicorn --bind :5000 --workers 3 --threads 2 app:app --log-level debug
+RuntimeDirectory=gunicorn
+WorkingDirectory=/home/app
 Restart=on-failure
+StandardOutput=journal
+StandardError=journal
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
 
 [Install]
 WantedBy=cloud-init.target
