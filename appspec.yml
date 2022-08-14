@@ -11,17 +11,9 @@ files:
     destination: /home/app
   - source: fluent-bit.conf
     destination: /etc/fluent-bit
-  - source: scripts/server.sh
-    destination: /home/app
   - source: systemd/journald.conf
     destination: /etc/systemd
 file_exists_behavior: OVERWRITE
-permissions:
-  - object: /home/app
-    pattern: server.sh
-    owner: app
-    group: app
-    mode: 777
 hooks:
   BeforeInstall:
     - location: scripts/create_users.sh
