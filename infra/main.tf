@@ -170,7 +170,7 @@ resource "aws_autoscaling_group" "demo-app-group" {
   ]
   launch_template {
     id = aws_launch_template.demo-app-launch-template.id
-    version = "$Latest"
+    version = aws_launch_template.demo-app-launch-template.latest_version
   }
   target_group_arns = [aws_lb_target_group.demo-app-target-group.arn]
   vpc_zone_identifier = [local.first-subnet, local.second-subnet]
