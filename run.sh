@@ -16,10 +16,14 @@ function deploy() {
   BUCKET_NAME="demo-app-artifacts-eu-west-1-${ACCOUNT_ID}"
   TIMESTAMP=$(date +%s)
   FILE_NAME="app-${TIMESTAMP}.zip"
+  TARGET_GROUP_ARN=$(aws elbv2 describe-target-groups --names "demo-app-target-group" | jq -r '.TargetGroups[0].TargetGroupArn')
   aws s3 cp latest.zip "s3://${BUCKET_NAME}/${FILE_NAME}"
-  aws deploy create-deployment --application-name "demo-app" \
-    --deployment-group-name "demo-app-deployment-group" \
-    --s3-location bucket="${BUCKET_NAME}",bundleType=zip,key="${FILE_NAME}"
+  python deploy.py --application "demo-app" \
+    --deployment-group "demo-app-deployment-group" \
+    --bucket "${BUCKET_NAME}" \
+    --bucket-key "${FILE_NAME}" \
+    --target-group-arn "${TARGET_GROUP_ARN}"
+
 }
 
 case "$1" in
