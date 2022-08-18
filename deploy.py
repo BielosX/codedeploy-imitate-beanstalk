@@ -59,39 +59,6 @@ class Deployer:
             time.sleep(30.0)
             running = self.get_running_deployments()
 
-    def get_target_group_waiting_time(self):
-        response = elbv2_client.describe_target_groups(
-            TargetGroupArns=[self.target_group_arn]
-        )
-        group = response['TargetGroups'][0]
-        unhealthy_threshold = group['UnhealthyThresholdCount']
-        interval = group['HealthCheckIntervalSeconds']
-        timeout = group['HealthCheckTimeoutSeconds']
-        return (interval + timeout) * unhealthy_threshold
-
-    @staticmethod
-    def get_unhealthy_number(target_group_arn):
-        response = elbv2_client.describe_target_health(
-            TargetGroupArn=target_group_arn
-        )
-        healths = map(lambda target: target['TargetHealth']['State'], response['TargetHealthDescriptions'])
-        return reduce(lambda acc, health: acc + 1 if health != 'healthy' else acc, healths, 0)
-
-    def wait_target_group_healthy(self):
-        waiting_time = 2.0 * float(self.get_target_group_waiting_time())
-        print("Waiting for health check status")
-        time.sleep(waiting_time)
-        unhealthy = Deployer.get_unhealthy_number(self.target_group_arn)
-        counter = 0
-        while unhealthy > 0:
-            if counter == self.retries:
-                raise NumberOfRetriesExceededError
-            print("{} ALB instances still unhealthy".format(unhealthy))
-            time.sleep(30.0)
-            unhealthy = Deployer.get_unhealthy_number(self.target_group_arn)
-            counter += 1
-        print("All instances passed health check")
-
     def wait_for_deployment(self, deployment_id):
         status = Deployer.get_deployment_info(deployment_id)['status']
         counter = 0
@@ -122,7 +89,7 @@ class Deployer:
     def deploy(self):
         counter = 0
         finished = False
-        while not (counter < self.retries or finished):
+        while not (counter == self.retries or finished):
             deployment_id = self.deploy_s3_bundle()['deploymentId']
             status = self.wait_for_deployment(deployment_id)
             if status == 'Failed':
@@ -134,7 +101,7 @@ class Deployer:
                     raise DeploymentFailedError
             elif status == 'Succeeded':
                 print("deployment finished with status: {}".format(status))
-                self.wait_target_group_healthy()
+                # self.wait_target_group_healthy()
                 finished = True
             else:
                 raise DeploymentStoppedError

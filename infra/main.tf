@@ -70,6 +70,12 @@ resource "aws_security_group" "demo-instance-security-group" {
     to_port = local.nginx-port
     protocol = "tcp"
   }
+  ingress {
+    cidr_blocks = ["0.0.0.0/0"]
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+  }
   egress {
     cidr_blocks = ["0.0.0.0/0"]
     from_port = 443
@@ -134,14 +140,18 @@ data "aws_iam_policy_document" "code-deploy-assume-role" {
 
 resource "aws_iam_role" "code-deploy-service-role" {
   assume_role_policy = data.aws_iam_policy_document.code-deploy-assume-role.json
-  managed_policy_arns = ["arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"]
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+  ]
 }
 
 resource "aws_iam_role" "demo-app-role" {
   assume_role_policy = data.aws_iam_policy_document.ec2-assume-role.json
   managed_policy_arns = [
     "arn:aws:iam::aws:policy/CloudWatchFullAccess",
-    "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+    "arn:aws:iam::aws:policy/AmazonS3FullAccess",
+    "arn:aws:iam::aws:policy/AWSCodeDeployFullAccess",
+    "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
   ]
 }
 

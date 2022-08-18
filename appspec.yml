@@ -22,5 +22,5 @@ hooks:
     - location: scripts/init_venv.sh
     - location: scripts/restart_journald.sh
     - location: scripts/start_services.sh
-  AfterAllowTestTraffic:
-    - location: scripts/test_connection.sh
+  ValidateService:
+    - location: scripts/test_elb_health.py
