@@ -23,4 +23,5 @@ hooks:
     - location: scripts/restart_journald.sh
     - location: scripts/start_services.sh
   ValidateService:
+    - location: scripts/test_proxy.sh
     - location: scripts/test_elb_health.py
