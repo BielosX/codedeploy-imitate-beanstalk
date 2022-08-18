@@ -105,23 +105,25 @@ class Deployer:
             counter += 1
         return status
 
+    def deploy_s3_bundle(self):
+        return codedeploy_client.create_deployment(
+            applicationName=self.application,
+            deploymentGroupName=self.deployment_group,
+            revision={
+                'revisionType': 'S3',
+                's3Location': {
+                    'bucket': self.bucket,
+                    'key': self.bucket_key,
+                    'bundleType': self.bundle_type
+                }
+            }
+        )
+
     def deploy(self):
         counter = 0
         finished = False
-        while counter != self.retries and not finished:
-            response = codedeploy_client.create_deployment(
-                applicationName=self.application,
-                deploymentGroupName=self.deployment_group,
-                revision={
-                    'revisionType': 'S3',
-                    's3Location': {
-                        'bucket': self.bucket,
-                        'key': self.bucket_key,
-                        'bundleType': self.bundle_type
-                    }
-                }
-            )
-            deployment_id = response['deploymentId']
+        while not (counter < self.retries or finished):
+            deployment_id = self.deploy_s3_bundle()['deploymentId']
             status = self.wait_for_deployment(deployment_id)
             if status == 'Failed':
                 error_info = Deployer.get_deployment_info(deployment_id)['errorInformation']
