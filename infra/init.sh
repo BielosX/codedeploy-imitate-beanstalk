@@ -8,6 +8,10 @@ exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
   yum -y install ruby
   yum -y install wget
   yum -y install curl
+  yum -y install unzip
+  curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+  unzip awscliv2.zip
+  ./aws/install
   curl https://raw.githubusercontent.com/fluent/fluent-bit/master/install.sh | sh
   pip3 install virtualenv
   TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
