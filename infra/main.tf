@@ -197,4 +197,9 @@ resource "aws_codedeploy_deployment_group" "demo-app-deployment-group" {
   deployment_group_name = "demo-app-deployment-group"
   service_role_arn = aws_iam_role.code-deploy-service-role.arn
   autoscaling_groups = [aws_autoscaling_group.demo-app-group.id]
+  load_balancer_info {
+    target_group_info {
+      name = aws_lb_target_group.demo-app-target-group.name
+    }
+  }
 }
