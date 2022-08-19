@@ -17,6 +17,7 @@ ExecReload=/bin/kill -s HUP $MAINPID
 KillMode=mixed
 TimeoutStopSec=5
 PrivateTmp=true
+EnvironmentFile=/etc/app/*.env
 
 [Install]
 WantedBy=cloud-init.target

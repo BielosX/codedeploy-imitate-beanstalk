@@ -18,10 +18,11 @@ hooks:
   BeforeInstall:
     - location: scripts/create_users.sh
     - location: scripts/stop_services.sh
+    - location: scripts/setup_env_var.sh
   AfterInstall:
     - location: scripts/init_venv.sh
     - location: scripts/restart_journald.sh
     - location: scripts/start_services.sh
   ValidateService:
     - location: scripts/test_proxy.sh
-    - location: scripts/test_elb_health.py
+    #- location: scripts/test_elb_health.py

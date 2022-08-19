@@ -26,8 +26,33 @@ function deploy() {
 
 }
 
+remove_images() {
+  images=$(aws ec2 describe-images --filters "Name=tag:Name,Values=demo-app-image")
+  for k in $(echo "$images" | jq -r '.Images | keys | .[]'); do
+    image=$(echo "$images" | jq -r ".Images[$k]")
+    image_id=$(echo "$image" | jq -r '.ImageId')
+    mapping_keys=$(echo "$image" | jq -r '.BlockDeviceMappings | keys | .[]')
+    snapshot_ids=$(echo "$image" | jq -r '.BlockDeviceMappings | map(.Ebs.SnapshotId)')
+    echo "Deleting AMI $image_id"
+    aws ec2 deregister-image --image-id "$image_id"
+    for id in $mapping_keys; do
+      snapshot_id=$(echo "$snapshot_ids" | jq -r ".[$id]")
+      echo "Deleting snapshot $snapshot_id"
+      aws ec2 delete-snapshot --snapshot-id "$snapshot_id"
+    done
+  done
+}
+
+function image() {
+  pushd image || exit
+  packer build -var "region=eu-west-1" .
+  popd || exit
+}
+
 case "$1" in
+  "image") image ;;
+  "remove_images") remove_images ;;
   "package") package ;;
   "deploy" ) deploy ;;
-  *) echo "package | deploy"
+  *) echo "package | deploy | image | remove_images"
 esac

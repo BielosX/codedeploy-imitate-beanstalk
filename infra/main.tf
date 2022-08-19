@@ -2,17 +2,13 @@ provider "aws" {
   region = "eu-west-1"
 }
 
-data "aws_ami" "amazon-linux-2" {
-  owners = ["amazon"]
+data "aws_ami" "demo-app-image" {
   most_recent = true
   filter {
-    name = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+    name   = "tag:Name"
+    values = ["demo-app-image"]
   }
-  filter {
-    name = "root-device-type"
-    values = ["ebs"]
-  }
+  owners = ["self"]
 }
 
 data "aws_vpc" "default-vpc" {
@@ -159,12 +155,24 @@ resource "aws_iam_instance_profile" "demo-app-instance-profile" {
   role = aws_iam_role.demo-app-role.id
 }
 
+resource "aws_s3_bucket" "demo-app-data-bucket" {
+  bucket = "demo-app-data-eu-west-1-${data.aws_caller_identity.current.account_id}"
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_acl" "demo-app-bucket-acl" {
+  bucket = aws_s3_bucket.demo-app-data-bucket.id
+  acl = "private"
+}
+
 resource "aws_launch_template" "demo-app-launch-template" {
   name = "demo-app-launch-template"
   instance_type = "t3.micro"
-  image_id = data.aws_ami.amazon-linux-2.id
+  image_id = data.aws_ami.demo-app-image.id
   vpc_security_group_ids = [aws_security_group.demo-instance-security-group.id]
-  user_data = base64encode(file("${path.module}/init.sh"))
+  user_data = base64encode(templatefile("${path.module}/app.env.tmpl", {
+    s3_bucket_arn = aws_s3_bucket.demo-app-data-bucket.arn
+  }))
   iam_instance_profile {
     arn = aws_iam_instance_profile.demo-app-instance-profile.arn
   }
