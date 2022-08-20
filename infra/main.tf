@@ -39,4 +39,6 @@ module "code-deploy" {
     S3_BUCKET_ARN = aws_s3_bucket.demo-app-data-bucket.arn
   }
   vpc_id = data.aws_vpc.default-vpc.id
+  app-name = "demo-app"
+  app-image-name = "demo-app-image"
 }

@@ -1,3 +1,10 @@
+variable "app-name" {
+  type = string
+}
+variable "app-image-name" {
+  type = string
+}
+
 variable "nginx-port" {
   type = number
   default = 8080
@@ -27,4 +34,14 @@ variable "elb-subnets" {
 
 variable "environment_variables" {
   type = map(string)
+}
+
+variable "deployment-type" {
+  type = string
+  default = "ALL_AT_ONCE"
+}
+
+variable "minimum_healthy_hosts" {
+  type = number
+  default = 1
 }
