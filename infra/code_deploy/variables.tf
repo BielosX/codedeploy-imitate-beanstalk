@@ -40,8 +40,8 @@ variable "deployment-type" {
   type = string
   default = "ALL_AT_ONCE"
   validation {
-    condition = contains(["ALL_AT_ONCE", "ROLLING"], var.deployment-type)
-    error_message = "The deployment-type should be one of: ALL_AT_ONCE, ROLLING."
+    condition = contains(["ALL_AT_ONCE", "ROLLING", "BLUE_GREEN"], var.deployment-type)
+    error_message = "The deployment-type should be one of: ALL_AT_ONCE, ROLLING, BLUE_GREEN."
   }
 }
 
