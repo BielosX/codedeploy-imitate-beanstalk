@@ -196,15 +196,18 @@ resource "aws_codedeploy_deployment_group" "app-deployment-group" {
     deployment_option = "WITH_TRAFFIC_CONTROL"
     deployment_type = var.deployment-type != "BLUE_GREEN" ? "IN_PLACE" : "BLUE_GREEN"
   }
-  blue_green_deployment_config {
-    green_fleet_provisioning_option {
-      action = "DISCOVER_EXISTING"
-    }
-    deployment_ready_option {
-      action_on_timeout = "CONTINUE_DEPLOYMENT"
-    }
-    terminate_blue_instances_on_deployment_success {
-      action = "KEEP_ALIVE"
+  dynamic "blue_green_deployment_config" {
+    for_each = var.deployment-type == "BLUE_GREEN" ? ["VALUE"] : []
+    content {
+      green_fleet_provisioning_option {
+        action = "DISCOVER_EXISTING"
+      }
+      deployment_ready_option {
+        action_on_timeout = "CONTINUE_DEPLOYMENT"
+      }
+      terminate_blue_instances_on_deployment_success {
+        action = "KEEP_ALIVE"
+      }
     }
   }
   lifecycle {
