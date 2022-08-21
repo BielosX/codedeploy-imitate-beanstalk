@@ -39,9 +39,32 @@ variable "environment_variables" {
 variable "deployment-type" {
   type = string
   default = "ALL_AT_ONCE"
+  validation {
+    condition = contains(["ALL_AT_ONCE", "ROLLING"], var.deployment-type)
+    error_message = "The deployment-type should be one of: ALL_AT_ONCE, ROLLING."
+  }
 }
 
-variable "minimum_healthy_hosts" {
+variable "minimum-healthy-hosts" {
   type = number
   default = 1
+}
+
+variable "rollback-on-failure" {
+  type = bool
+  default = true
+}
+
+variable "role-id" {
+  type = string
+}
+
+variable "max-instances" {
+  type = number
+  default = 4
+}
+
+variable "min-instances" {
+  type = number
+  default = 2
 }

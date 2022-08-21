@@ -31,6 +31,29 @@ locals {
   second_subnet = data.aws_subnets.default-subnets.ids[1]
 }
 
+data "aws_iam_policy_document" "ec2-assume-role" {
+  version = "2012-10-17"
+  statement {
+    effect = "Allow"
+    actions = ["sts:AssumeRole"]
+    principals {
+      identifiers = ["ec2.amazonaws.com"]
+      type        = "Service"
+    }
+  }
+}
+
+resource "aws_iam_role" "app-role" {
+  assume_role_policy = data.aws_iam_policy_document.ec2-assume-role.json
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/CloudWatchFullAccess",
+    "arn:aws:iam::aws:policy/AmazonS3FullAccess",
+    "arn:aws:iam::aws:policy/AWSCodeDeployFullAccess",
+    "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+  ]
+}
+
+
 module "code-deploy" {
   source = "./code_deploy"
   app-subnets = [local.first_subnet, local.second_subnet]
@@ -41,4 +64,5 @@ module "code-deploy" {
   vpc_id = data.aws_vpc.default-vpc.id
   app-name = "demo-app"
   app-image-name = "demo-app-image"
+  role-id = aws_iam_role.app-role.id
 }

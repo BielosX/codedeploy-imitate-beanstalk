@@ -80,10 +80,15 @@ resource "aws_lb_target_group" "app-target-group" {
   protocol = "HTTP"
   port = var.nginx-port
   vpc_id = var.vpc_id
+  deregistration_delay = 20
   health_check {
     enabled = true
     matcher = "200"
     path = var.app-health-path
+    healthy_threshold = 2
+    unhealthy_threshold = 2
+    timeout = 5
+    interval = 10
   }
 }
 
@@ -94,18 +99,6 @@ resource "aws_alb_listener" "default-listener" {
   default_action {
     type = "forward"
     target_group_arn = aws_lb_target_group.app-target-group.arn
-  }
-}
-
-data "aws_iam_policy_document" "ec2-assume-role" {
-  version = "2012-10-17"
-  statement {
-    effect = "Allow"
-    actions = ["sts:AssumeRole"]
-    principals {
-      identifiers = ["ec2.amazonaws.com"]
-      type        = "Service"
-    }
   }
 }
 
@@ -128,18 +121,8 @@ resource "aws_iam_role" "code-deploy-service-role" {
   ]
 }
 
-resource "aws_iam_role" "app-role" {
-  assume_role_policy = data.aws_iam_policy_document.ec2-assume-role.json
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/CloudWatchFullAccess",
-    "arn:aws:iam::aws:policy/AmazonS3FullAccess",
-    "arn:aws:iam::aws:policy/AWSCodeDeployFullAccess",
-    "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-  ]
-}
-
 resource "aws_iam_instance_profile" "demo-app-instance-profile" {
-  role = aws_iam_role.app-role.id
+  role = var.role-id
 }
 
 resource "aws_launch_template" "demo-app-launch-template" {
@@ -154,8 +137,8 @@ resource "aws_launch_template" "demo-app-launch-template" {
 }
 
 resource "aws_autoscaling_group" "demo-app-group" {
-  max_size = 2
-  min_size = 1
+  max_size = var.max-instances
+  min_size = var.min-instances
   health_check_type = "ELB"
   termination_policies = [
     "OldestInstance",
@@ -169,6 +152,9 @@ resource "aws_autoscaling_group" "demo-app-group" {
   vpc_zone_identifier = var.app-subnets
   instance_refresh {
     strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 100
+    }
   }
 }
 
@@ -181,7 +167,7 @@ resource "aws_codedeploy_deployment_config" "app-deployment-config" {
   deployment_config_name = "${var.app-name}-deployment-config"
   minimum_healthy_hosts {
     type = "HOST_COUNT"
-    value = 0
+    value = var.deployment-type == "ALL_AT_ONCE" ? 0 : var.minimum-healthy-hosts
   }
 }
 
@@ -194,6 +180,14 @@ resource "aws_codedeploy_deployment_group" "demo-app-deployment-group" {
     target_group_info {
       name = aws_lb_target_group.app-target-group.name
     }
+  }
+  auto_rollback_configuration {
+    enabled = var.rollback-on-failure
+    events = ["DEPLOYMENT_FAILURE"]
+  }
+  deployment_style {
+    deployment_option = "WITH_TRAFFIC_CONTROL"
+    deployment_type = "IN_PLACE"
   }
 }
 
