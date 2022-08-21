@@ -157,6 +157,11 @@ resource "aws_autoscaling_group" "app-group" {
       min_healthy_percentage = 90
     }
   }
+  tag {
+    key = "Name"
+    propagate_at_launch = true
+    value = var.app-name
+  }
 }
 
 resource "aws_codedeploy_app" "app" {
@@ -176,7 +181,7 @@ resource "aws_codedeploy_deployment_group" "app-deployment-group" {
   app_name = aws_codedeploy_app.app.name
   deployment_group_name = "${var.app-name}-deployment-group"
   service_role_arn = aws_iam_role.code-deploy-service-role.arn
-  autoscaling_groups = var.deployment-type == "BLUE_GREEN" ? null : [aws_autoscaling_group.app-group[0].id]
+  autoscaling_groups = [aws_autoscaling_group.app-group[0].id]
   deployment_config_name = aws_codedeploy_deployment_config.app-deployment-config.id
   load_balancer_info {
     target_group_info {
@@ -190,6 +195,20 @@ resource "aws_codedeploy_deployment_group" "app-deployment-group" {
   deployment_style {
     deployment_option = "WITH_TRAFFIC_CONTROL"
     deployment_type = var.deployment-type != "BLUE_GREEN" ? "IN_PLACE" : "BLUE_GREEN"
+  }
+  blue_green_deployment_config {
+    green_fleet_provisioning_option {
+      action = "DISCOVER_EXISTING"
+    }
+    deployment_ready_option {
+      action_on_timeout = "CONTINUE_DEPLOYMENT"
+    }
+    terminate_blue_instances_on_deployment_success {
+      action = "KEEP_ALIVE"
+    }
+  }
+  lifecycle {
+    ignore_changes = [autoscaling_groups]
   }
 }
 

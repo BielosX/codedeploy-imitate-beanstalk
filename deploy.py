@@ -5,6 +5,7 @@ from functools import reduce
 
 codedeploy_client = boto3.client('codedeploy')
 elbv2_client = boto3.client('elbv2')
+asg_client = boto3.client('autoscaling')
 
 
 class DeploymentStoppedError(Exception):
@@ -41,6 +42,10 @@ class Deployer:
     def get_deployment_info(deployment_id):
         return codedeploy_client.get_deployment(deploymentId=deployment_id)['deploymentInfo']
 
+    def get_deployment_group_info(self):
+        return codedeploy_client.get_deployment_group(applicationName=self.application,
+                                                      deploymentGroupName=self.deployment_group)['deploymentGroupInfo']
+
     def get_running_deployments(self):
         response = codedeploy_client.list_deployments(
             applicationName=self.application,
@@ -72,7 +77,10 @@ class Deployer:
             counter += 1
         return status
 
-    def deploy_s3_bundle(self):
+    def deploy_s3_bundle(self, green_asg=None):
+        target_instances = {
+            'autoScalingGroups': [green_asg]
+        }
         return codedeploy_client.create_deployment(
             applicationName=self.application,
             deploymentGroupName=self.deployment_group,
@@ -83,14 +91,45 @@ class Deployer:
                     'key': self.bucket_key,
                     'bundleType': self.bundle_type
                 }
-            }
+            },
+            targetInstances=None if not green_asg else target_instances
         )
+
+    def is_blue_green(self):
+        return self.get_deployment_group_info()['deploymentStyle']['deploymentType'] == "BLUE_GREEN"
+
+    def choose_asg(self):
+        info = self.get_deployment_group_info()
+        current_group_name = info["autoScalingGroups"][0]['name']
+        response = asg_client.describe_auto_scaling_groups(
+            Filters=[
+                {
+                    'Name': 'tag:Name',
+                    'Values': [self.application]
+                }
+            ]
+        )
+        names = list(map(lambda group: group['AutoScalingGroupName'], response['AutoScalingGroups']))
+        first = names[0]
+        second = names[1]
+        print("Current group: {}".format(current_group_name))
+        if current_group_name == first:
+            print("Chosen group: {}".format(second))
+            return second
+        else:
+            print("Chosen group: {}".format(first))
+            return first
 
     def deploy(self):
         counter = 0
         finished = False
         while not (counter == self.retries or finished):
-            deployment_id = self.deploy_s3_bundle()['deploymentId']
+            if self.is_blue_green():
+                print("Blue/Green deployment detected")
+                asg_name = self.choose_asg()
+                deployment_id = self.deploy_s3_bundle(green_asg=asg_name)['deploymentId']
+            else:
+                deployment_id = self.deploy_s3_bundle()['deploymentId']
             status = self.wait_for_deployment(deployment_id)
             if status == 'Failed':
                 error_info = Deployer.get_deployment_info(deployment_id)['errorInformation']
