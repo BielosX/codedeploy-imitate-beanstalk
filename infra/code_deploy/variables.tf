@@ -45,9 +45,23 @@ variable "deployment-type" {
   }
 }
 
+variable "instances-update-policy" {
+  type = string
+  default = "ONE_AT_A_TIME"
+  validation {
+    condition = contains(["ALL_AT_ONCE", "ROLLING", "ONE_AT_A_TIME"], var.instances-update-policy)
+    error_message = "The instances-update-policy should be one of: ALL_AT_ONCE, ROLLING, ONE_AT_A_TIME."
+  }
+}
+
 variable "minimum-healthy-hosts" {
   type = number
   default = 1
+}
+
+variable "instance-refresh-healthy-percentage" {
+  type = string
+  default = 90
 }
 
 variable "rollback-on-failure" {

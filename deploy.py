@@ -1,7 +1,6 @@
 import boto3
 import time
 import argparse
-from functools import reduce
 
 codedeploy_client = boto3.client('codedeploy')
 elbv2_client = boto3.client('elbv2')
@@ -17,6 +16,10 @@ class DeploymentFailedError(Exception):
 
 
 class NumberOfRetriesExceededError(Exception):
+    pass
+
+
+class RefreshCancelledOrFailedError(Exception):
     pass
 
 
@@ -78,29 +81,32 @@ class Deployer:
         return status
 
     def deploy_s3_bundle(self, green_asg=None):
-        target_instances = {
-            'autoScalingGroups': [green_asg]
-        }
-        return codedeploy_client.create_deployment(
-            applicationName=self.application,
-            deploymentGroupName=self.deployment_group,
-            revision={
+        args = {
+            'applicationName': self.application,
+            'deploymentGroupName': self.deployment_group,
+            'revision': {
                 'revisionType': 'S3',
                 's3Location': {
                     'bucket': self.bucket,
                     'key': self.bucket_key,
                     'bundleType': self.bundle_type
                 }
-            },
-            targetInstances=None if not green_asg else target_instances
-        )
+            }
+        }
+        if green_asg is not None:
+            args['targetInstances'] = {
+                'autoScalingGroups': [green_asg]
+            }
+        return codedeploy_client.create_deployment(**args)
 
     def is_blue_green(self):
         return self.get_deployment_group_info()['deploymentStyle']['deploymentType'] == "BLUE_GREEN"
 
-    def choose_asg(self):
+    def get_current_asg(self):
         info = self.get_deployment_group_info()
-        current_group_name = info["autoScalingGroups"][0]['name']
+        return info["autoScalingGroups"][0]['name']
+
+    def get_autoscaling_groups(self):
         response = asg_client.describe_auto_scaling_groups(
             Filters=[
                 {
@@ -109,7 +115,11 @@ class Deployer:
                 }
             ]
         )
-        names = list(map(lambda group: group['AutoScalingGroupName'], response['AutoScalingGroups']))
+        return list(map(lambda group: group['AutoScalingGroupName'], response['AutoScalingGroups']))
+
+    def choose_asg(self):
+        current_group_name = self.get_current_asg()
+        names = self.get_autoscaling_groups()
         first = names[0]
         second = names[1]
         print("Current group: {}".format(current_group_name))
@@ -145,6 +155,36 @@ class Deployer:
             else:
                 raise DeploymentStoppedError
 
+    def wait_for_instances_refresh(self):
+        names = self.get_autoscaling_groups()
+        running = set({})
+        for name in names:
+            refreshes = asg_client.describe_instance_refreshes(AutoScalingGroupName=name)['InstanceRefreshes']
+            for refresh in refreshes:
+                status = refresh['Status']
+                refresh_id = refresh['InstanceRefreshId']
+                if status in ['Pending', 'InProgress']:
+                    print("Refresh {} status: {}".format(refresh_id, status))
+                    running.add((refresh_id, name))
+        finished = set({})
+        counter = 0
+        while not (counter == self.retries or running - finished == set({})):
+            for (refresh, name) in running:
+                response = asg_client.describe_instance_refreshes(AutoScalingGroupName=name,
+                                                                  InstanceRefreshIds=[refresh])
+                refresh_info = response['InstanceRefreshes'][0]
+                status = refresh_info['Status']
+                if status == 'Successful':
+                    print("Refresh {} finished".format(refresh))
+                    finished.add((refresh, name))
+                elif status in ['Pending', 'InProgress']:
+                    print("Refresh {} status: {}".format(refresh, status))
+                else:
+                    raise RefreshCancelledOrFailedError
+            print("waiting for 30 seconds")
+            counter += 1
+            time.sleep(30.0)
+
 
 def main():
     parser = argparse.ArgumentParser(description='Deploy App using CodeDeploy')
@@ -163,6 +203,7 @@ def main():
                         args.bucket_key,
                         args.bundle_type,
                         args.target_group_arn)
+    deployer.wait_for_instances_refresh()
     deployer.deploy()
 
 

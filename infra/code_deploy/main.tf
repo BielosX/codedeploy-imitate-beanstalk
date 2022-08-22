@@ -136,12 +136,21 @@ resource "aws_launch_template" "app-launch-template" {
   }
 }
 
+locals {
+  update-policy-to-health-percentage = {
+    "ALL_AT_ONCE": 0,
+    "ROLLING": var.instance-refresh-healthy-percentage,
+    "ONE_AT_A_TIME": 100
+  }
+}
+
 resource "aws_autoscaling_group" "app-group" {
   count = var.deployment-type == "BLUE_GREEN" ? 2 : 1
   name = "${var.app-name}-asg-${count.index}"
   max_size = var.max-instances
   min_size = var.min-instances
   health_check_type = "ELB"
+  health_check_grace_period = 60
   termination_policies = [
     "OldestInstance",
     "OldestLaunchTemplate"
@@ -154,7 +163,7 @@ resource "aws_autoscaling_group" "app-group" {
   instance_refresh {
     strategy = "Rolling"
     preferences {
-      min_healthy_percentage = 90
+      min_healthy_percentage = lookup(local.update-policy-to-health-percentage, var.instances-update-policy, 90)
     }
   }
   tag {
