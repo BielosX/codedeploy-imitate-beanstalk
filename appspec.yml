@@ -22,6 +22,7 @@ hooks:
   AfterInstall:
     - location: scripts/init_venv.sh
     - location: scripts/restart_journald.sh
+    - location: scripts/set_fluent_bit_region.sh
     - location: scripts/start_services.sh
   ValidateService:
     - location: scripts/test_proxy.sh

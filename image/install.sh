@@ -8,6 +8,7 @@ yum -y install python3-pip
 yum -y install ruby
 yum -y install wget
 yum -y install curl
+yum -y install jq
 curl https://raw.githubusercontent.com/fluent/fluent-bit/master/install.sh | sh
 pip3 install virtualenv
 pip3 install boto3
