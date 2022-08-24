@@ -6,7 +6,7 @@ REGION=$(jq -r '.region' <<< "$INSTANCE_IDENTITY")
 INSTANCE_ID=$(jq -r '.instanceId' <<< "$INSTANCE_IDENTITY")
 mkdir -p /usr/lib/systemd/system/fluent-bit.service.d
 
-cat <<EOT >> /usr/lib/systemd/system/fluent-bit.service.d/00_env.conf
+cat <<EOT > /usr/lib/systemd/system/fluent-bit.service.d/00_env.conf
 [Service]
 Environment=REGION=${REGION} INSTANCE_ID=${INSTANCE_ID}
 EOT
