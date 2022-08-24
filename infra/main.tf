@@ -64,7 +64,7 @@ module "code-deploy" {
   vpc_id = data.aws_vpc.default-vpc.id
   app-name = "demo-app"
   app-image-name = "demo-app-image"
-  deployment-type = "ALL_AT_ONCE"
+  deployment-type = "BLUE_GREEN"
   instances-update-policy = "ONE_AT_A_TIME"
   role-id = aws_iam_role.app-role.id
 }

@@ -215,7 +215,7 @@ resource "aws_codedeploy_deployment_group" "app-deployment-group" {
         action_on_timeout = "CONTINUE_DEPLOYMENT"
       }
       terminate_blue_instances_on_deployment_success {
-        action = "KEEP_ALIVE"
+        action = "KEEP_ALIVE" // TERMINATING removes ASG, not instances
       }
     }
   }
