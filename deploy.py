@@ -5,6 +5,7 @@ import argparse
 codedeploy_client = boto3.client('codedeploy')
 elbv2_client = boto3.client('elbv2')
 asg_client = boto3.client('autoscaling')
+ec2_client = boto3.client('ec2')
 
 
 class DeploymentStoppedError(Exception):
@@ -106,6 +107,11 @@ class Deployer:
         info = self.get_deployment_group_info()
         return info["autoScalingGroups"][0]['name']
 
+    def get_blue_asg(self):
+        current_asg = self.get_current_asg()
+        groups = self.get_autoscaling_groups()
+        return list(filter(lambda group: group != current_asg, groups))[0]
+
     def get_autoscaling_groups(self):
         response = asg_client.describe_auto_scaling_groups(
             Filters=[
@@ -129,6 +135,13 @@ class Deployer:
         else:
             print("Chosen group: {}".format(first))
             return first
+
+    def terminate_blue_instances(self):
+        blue_asg = self.get_blue_asg()
+        asg_info = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[blue_asg])['AutoScalingGroups'][0]
+        instance_ids = list(map(lambda instance: instance['InstanceId'], asg_info['Instances']))
+        ec2_client.terminate_instances(InstanceIds=instance_ids)
+        print("Blue ASG instances termination initialized")
 
     def deploy(self):
         counter = 0
@@ -154,6 +167,8 @@ class Deployer:
                 finished = True
             else:
                 raise DeploymentStoppedError
+        if self.is_blue_green():
+            self.terminate_blue_instances()
 
     def wait_for_instances_refresh(self):
         names = self.get_autoscaling_groups()
