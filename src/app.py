@@ -20,3 +20,9 @@ def hello():
 @app.route("/bucket")
 def bucket():
     return bucket_arn
+
+
+@app.route("/error")
+def error():
+    app.logger.error("Problem occurred")
+    return "Error", 500

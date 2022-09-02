@@ -151,6 +151,7 @@ resource "aws_autoscaling_group" "app-group" {
   min_size = var.min-instances
   health_check_type = "ELB"
   health_check_grace_period = 60
+  enabled_metrics = ["GroupInServiceInstances", "GroupDesiredCapacity"]
   termination_policies = [
     "OldestInstance",
     "OldestLaunchTemplate"
@@ -171,6 +172,52 @@ resource "aws_autoscaling_group" "app-group" {
     propagate_at_launch = true
     value = var.app-name
   }
+}
+
+resource "aws_autoscaling_policy" "app-scale-up-policy" {
+  count = var.deployment-type == "BLUE_GREEN" ? 2 : 1
+  autoscaling_group_name = aws_autoscaling_group.app-group[count.index].name
+  name = "${var.app-name}-scaling-policy-${count.index}"
+  adjustment_type = "ChangeInCapacity"
+  scaling_adjustment = 1
+  cooldown = 60
+}
+
+resource "aws_cloudwatch_metric_alarm" "app-network-outbound-high" {
+  count = var.deployment-type == "BLUE_GREEN" ? 2 : 1
+  alarm_name = "${var.app-name}-network-outbound-high-${count.index}"
+  comparison_operator = "GreaterThanThreshold"
+  statistic = "Average"
+  evaluation_periods = 5
+  period = 60
+  actions_enabled = true
+  namespace = "AWS/EC2"
+  metric_name = "NetworkOut"
+  threshold = 6 * 1024 * 1024
+  alarm_actions = [aws_autoscaling_policy.app-scale-up-policy[count.index].arn]
+}
+
+resource "aws_autoscaling_policy" "app-scale-down-policy" {
+  count = var.deployment-type == "BLUE_GREEN" ? 2 : 1
+  autoscaling_group_name = aws_autoscaling_group.app-group[count.index].name
+  name = "${var.app-name}-scaling-policy-${count.index}"
+  adjustment_type = "ChangeInCapacity"
+  scaling_adjustment = -1
+  cooldown = 60
+}
+
+resource "aws_cloudwatch_metric_alarm" "app-network-outbound-low" {
+  count = var.deployment-type == "BLUE_GREEN" ? 2 : 1
+  alarm_name = "${var.app-name}-network-outbound-low-${count.index}"
+  comparison_operator = "LessThanThreshold"
+  statistic = "Average"
+  evaluation_periods = 5
+  period = 60
+  actions_enabled = true
+  namespace = "AWS/EC2"
+  metric_name = "NetworkOut"
+  threshold = 2 * 1024 * 1024
+  alarm_actions = [aws_autoscaling_policy.app-scale-down-policy[count.index].arn]
 }
 
 resource "aws_codedeploy_app" "app" {
@@ -221,6 +268,7 @@ resource "aws_codedeploy_deployment_group" "app-deployment-group" {
   }
   lifecycle {
     ignore_changes = [autoscaling_groups]
+    replace_triggered_by = [aws_codedeploy_deployment_config.app-deployment-config.id]
   }
 }
 
