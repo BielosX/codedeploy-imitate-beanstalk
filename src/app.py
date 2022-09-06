@@ -1,5 +1,6 @@
 from flask import Flask, request
 import os
+import json
 
 app = Flask(__name__)
 
@@ -30,4 +31,9 @@ def error():
 
 @app.route("/origin")
 def origin():
-    return request.headers['X-Forwarded-For']
+    obj = {
+        'origin': request.headers['X-Forwarded-For'],
+        'realIp': request.headers['X-Real-IP'],
+        'host': request.headers['Host']
+    }
+    return json.dumps(obj), 200, {'Content-Type': 'application/json'}
