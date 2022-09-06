@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 import os
 
 app = Flask(__name__)
@@ -26,3 +26,8 @@ def bucket():
 def error():
     app.logger.error("Problem occurred")
     return "Error", 500
+
+
+@app.route("/origin")
+def origin():
+    return request.headers['X-Forwarded-For']

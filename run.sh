@@ -49,10 +49,31 @@ function image() {
   popd || exit
 }
 
+function terraform_apply() {
+  pushd infra || exit
+  terraform init && terraform apply -auto-approve
+  popd || exit
+}
+
+function terraform_destroy() {
+  pushd infra || exit
+  terraform destroy -auto-approve || exit
+  popd || exit
+}
+
+function terraform_plan() {
+  pushd infra || exit
+  terraform plan
+  popd || exit
+}
+
 case "$1" in
   "image") image ;;
   "remove_images") remove_images ;;
   "package") package ;;
   "deploy" ) deploy ;;
-  *) echo "package | deploy | image | remove_images"
+  "terraform_apply") terraform_apply ;;
+  "terraform_destroy") terraform_destroy ;;
+  "terraform_plan") terraform_plan ;;
+  *) echo "package | deploy | image | remove_images | terraform_apply | terraform_destroy | terraform_plan"
 esac
