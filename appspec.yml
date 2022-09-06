@@ -13,6 +13,8 @@ files:
     destination: /etc/fluent-bit
   - source: systemd/journald.conf
     destination: /etc/systemd
+  - source: web
+    destination: /home/proxy/web
 file_exists_behavior: OVERWRITE
 hooks:
   BeforeInstall:

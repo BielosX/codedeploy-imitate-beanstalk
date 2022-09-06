@@ -9,6 +9,7 @@ function package() {
   zip -ur latest.zip src
   zip -ur latest.zip scripts
   zip -ur latest.zip systemd
+  zip -ur latest.zip web
 }
 
 function deploy() {
