@@ -24,6 +24,10 @@ source "amazon-ebs" "main" {
 
 build {
   sources = ["source.amazon-ebs.main"]
+  provisioner "file" {
+    source = "../fluent-bit/fluent-bit.conf"
+    destination = "/tmp/fluent-bit.conf"
+  }
   provisioner "shell" {
     script = "install.sh"
     execute_command = "echo 'packer' | sudo -S sh -c '{{ .Vars }} {{ .Path }}'"

@@ -9,8 +9,8 @@ files:
     destination: /etc/nginx
   - source: requirements.txt
     destination: /home/app
-  - source: fluent-bit.conf
-    destination: /etc/fluent-bit
+  - source: fluent-bit/app.conf
+    destination: /etc/fluent-bit/fluent-bit.conf.d
   - source: systemd/journald.conf
     destination: /etc/systemd
   - source: web
@@ -24,7 +24,6 @@ hooks:
   AfterInstall:
     - location: scripts/init_venv.sh
     - location: scripts/restart_journald.sh
-    - location: scripts/set_fluent_bit_env.sh
     - location: scripts/start_services.sh
   ValidateService:
     - location: scripts/test_proxy.sh

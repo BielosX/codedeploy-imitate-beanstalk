@@ -5,7 +5,7 @@ function package() {
   zip -r latest.zip requirements.txt
   zip -ur latest.zip nginx.conf
   zip -ur latest.zip appspec.yml
-  zip -ur latest.zip fluent-bit.conf
+  zip -ur latest.zip fluent-bit
   zip -ur latest.zip src
   zip -ur latest.zip scripts
   zip -ur latest.zip systemd
