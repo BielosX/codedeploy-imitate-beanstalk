@@ -17,13 +17,25 @@ function deploy() {
   BUCKET_NAME="demo-app-artifacts-eu-west-1-${ACCOUNT_ID}"
   TIMESTAMP=$(date +%s)
   FILE_NAME="app-${TIMESTAMP}.zip"
-  TARGET_GROUP_ARN=$(aws elbv2 describe-target-groups --names "demo-app-target-group" | jq -r '.TargetGroups[0].TargetGroupArn')
   aws s3 cp latest.zip "s3://${BUCKET_NAME}/${FILE_NAME}"
-  python deploy.py --application "demo-app" \
-    --deployment-group "demo-app-deployment-group" \
-    --bucket "${BUCKET_NAME}" \
-    --bucket-key "${FILE_NAME}" \
-    --target-group-arn "${TARGET_GROUP_ARN}"
+  TARGET_GROUP=$(aws elbv2 describe-target-groups --names "demo-app-target-group" 2>/dev/null)
+  RET_VAL=$?
+  if [ $RET_VAL -ne 0 ]; then
+    echo "Classic ELB used"
+    python deploy.py --application "demo-app" \
+      --deployment-group "demo-app-deployment-group" \
+      --bucket "${BUCKET_NAME}" \
+      --bucket-key "${FILE_NAME}" \
+      --classic-lb-name "demo-app-classic-lb"
+  else
+    echo "Application LB used"
+    TARGET_GROUP_ARN=$(jq -r '.TargetGroups[0].TargetGroupArn' <<< "$TARGET_GROUP")
+    python deploy.py --application "demo-app" \
+      --deployment-group "demo-app-deployment-group" \
+      --bucket "${BUCKET_NAME}" \
+      --bucket-key "${FILE_NAME}" \
+      --target-group-arn "${TARGET_GROUP_ARN}"
+  fi
 
 }
 

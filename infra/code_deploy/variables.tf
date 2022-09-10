@@ -82,3 +82,22 @@ variable "min-instances" {
   type = number
   default = 2
 }
+
+variable "load-balancer" {
+  type = string
+  default = "classic"
+  validation {
+    condition = contains(["classic", "application"], var.load-balancer)
+    error_message = "The load-balancer should be one of: classic, application."
+  }
+}
+
+variable "internal-lb" {
+  type = bool
+  default = false
+}
+
+variable "allow-ssh" {
+  type = bool
+  default = false
+}

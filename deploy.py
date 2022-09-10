@@ -33,7 +33,8 @@ class Deployer:
                  bucket,
                  bucket_key,
                  bundle_type,
-                 target_group_arn):
+                 target_group_arn,
+                 classic_lb_name):
         self.retries = retries
         self.application = application
         self.deployment_group = deployment_group
@@ -41,6 +42,7 @@ class Deployer:
         self.bucket_key = bucket_key
         self.bundle_type = bundle_type
         self.target_group_arn = target_group_arn
+        self.classic_lb_name = classic_lb_name
 
     @staticmethod
     def get_deployment_info(deployment_id):
@@ -209,7 +211,8 @@ def main():
     parser.add_argument('--bucket-key', required=True)
     parser.add_argument('--bundle-type', default='zip')
     parser.add_argument('--deployment-group', required=True)
-    parser.add_argument('--target-group-arn', required=True)
+    parser.add_argument('--target-group-arn')
+    parser.add_argument('--classic-lb-name')
     args = parser.parse_args()
     deployer = Deployer(args.retries,
                         args.application,
@@ -217,7 +220,8 @@ def main():
                         args.bucket,
                         args.bucket_key,
                         args.bundle_type,
-                        args.target_group_arn)
+                        args.target_group_arn,
+                        args.classic_lb_name)
     deployer.wait_for_instances_refresh()
     deployer.deploy()
 

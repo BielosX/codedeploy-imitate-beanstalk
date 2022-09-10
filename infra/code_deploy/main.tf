@@ -53,11 +53,14 @@ resource "aws_security_group" "instance-security-group" {
     to_port = var.nginx-port
     protocol = "tcp"
   }
-  ingress {
-    cidr_blocks = ["0.0.0.0/0"]
-    from_port = 22
-    to_port = 22
-    protocol = "tcp"
+  dynamic "ingress" {
+    for_each = var.allow-ssh ? ["VALUE"] : []
+    content {
+      cidr_blocks = ["0.0.0.0/0"]
+      from_port = 22
+      to_port = 22
+      protocol = "tcp"
+    }
   }
   egress {
     cidr_blocks = ["0.0.0.0/0"]
@@ -67,15 +70,38 @@ resource "aws_security_group" "instance-security-group" {
   }
 }
 
+resource "aws_elb" "classic-lb" {
+  count = var.load-balancer == "classic" ? 1 : 0
+  name = "${var.app-name}-classic-lb"
+  internal = var.internal-lb
+  security_groups = [aws_security_group.lb-security-group.id]
+  subnets = var.elb-subnets
+  listener {
+    instance_port = var.nginx-port
+    instance_protocol = "http"
+    lb_port = 80
+    lb_protocol = "http"
+  }
+  health_check {
+    healthy_threshold = 2
+    interval = 10
+    target = "HTTP:${var.nginx-port}${var.app-health-path}"
+    timeout = 5
+    unhealthy_threshold = 2
+  }
+}
+
 resource "aws_lb" "app-lb" {
+  count = var.load-balancer == "application" ? 1 : 0
   name = "${var.app-name}-lb"
-  internal = false
+  internal = var.internal-lb
   load_balancer_type = "application"
   security_groups = [aws_security_group.lb-security-group.id]
   subnets = var.elb-subnets
 }
 
 resource "aws_lb_target_group" "app-target-group" {
+  count = var.load-balancer == "application" ? 1 : 0
   name = "${var.app-name}-target-group"
   protocol = "HTTP"
   port = var.nginx-port
@@ -93,12 +119,13 @@ resource "aws_lb_target_group" "app-target-group" {
 }
 
 resource "aws_alb_listener" "default-listener" {
-  load_balancer_arn = aws_lb.app-lb.arn
+  count = var.load-balancer == "application" ? 1 : 0
+  load_balancer_arn = aws_lb.app-lb[0].arn
   protocol = "HTTP"
   port = 80
   default_action {
     type = "forward"
-    target_group_arn = aws_lb_target_group.app-target-group.arn
+    target_group_arn = aws_lb_target_group.app-target-group[0].arn
   }
 }
 
@@ -140,7 +167,7 @@ locals {
   update-policy-to-health-percentage = {
     "ALL_AT_ONCE": 0,
     "ROLLING": var.instance-refresh-healthy-percentage,
-    "ONE_AT_A_TIME": 100
+    "ONE_AT_A_TIME": 99
   }
 }
 
@@ -240,8 +267,17 @@ resource "aws_codedeploy_deployment_group" "app-deployment-group" {
   autoscaling_groups = [aws_autoscaling_group.app-group[0].id]
   deployment_config_name = aws_codedeploy_deployment_config.app-deployment-config.id
   load_balancer_info {
-    target_group_info {
-      name = aws_lb_target_group.app-target-group.name
+    dynamic "target_group_info" {
+      for_each = var.load-balancer == "application" ? ["VALUE"] : []
+      content {
+        name = aws_lb_target_group.app-target-group[0].name
+      }
+    }
+    dynamic "elb_info" {
+      for_each = var.load-balancer == "classic" ? ["VALUE"] : []
+      content {
+        name = aws_elb.classic-lb[0].name
+      }
     }
   }
   auto_rollback_configuration {

@@ -70,4 +70,5 @@ module "code-deploy" {
   deployment-type = "ALL_AT_ONCE"
   instances-update-policy = "ONE_AT_A_TIME"
   role-id = aws_iam_role.app-role.id
+  allow-ssh = true
 }
