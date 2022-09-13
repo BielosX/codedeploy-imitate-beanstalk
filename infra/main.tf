@@ -49,17 +49,50 @@ resource "aws_iam_role" "app-role" {
     "arn:aws:iam::aws:policy/CloudWatchFullAccess",
     "arn:aws:iam::aws:policy/AmazonS3FullAccess",
     "arn:aws:iam::aws:policy/AWSCodeDeployFullAccess",
-    "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+    "arn:aws:iam::aws:policy/AmazonEC2FullAccess",
+    "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
   ]
 }
 
+
+resource "aws_sqs_queue" "task-queue" {
+  visibility_timeout_seconds = 60
+}
+
+data "aws_iam_policy_document" "sqs-allow-events" {
+  statement {
+    effect = "Allow"
+    actions = ["sqs:SendMessage"]
+    principals {
+      identifiers = ["events.amazonaws.com"]
+      type = "Service"
+    }
+    resources = ["*"]
+  }
+}
+
+resource "aws_sqs_queue_policy" "allow-events" {
+  policy = data.aws_iam_policy_document.sqs-allow-events.json
+  queue_url = aws_sqs_queue.task-queue.url
+}
+
+resource "aws_cloudwatch_event_rule" "schedule-rule" {
+  schedule_expression = "rate(1 minute)"
+}
+
+resource "aws_cloudwatch_event_target" "sqs-event-target" {
+  arn = aws_sqs_queue.task-queue.arn
+  rule =aws_cloudwatch_event_rule.schedule-rule.name
+}
 
 module "code-deploy" {
   source = "./code_deploy"
   app-subnets = [local.first_subnet, local.second_subnet]
   elb-subnets = [local.first_subnet, local.second_subnet]
   environment_variables = {
-    S3_BUCKET_ARN = aws_s3_bucket.demo-app-data-bucket.arn
+    S3_BUCKET_ARN = aws_s3_bucket.demo-app-data-bucket.arn,
+    QUEUE_URL = aws_sqs_queue.task-queue.url,
+    AWS_DEFAULT_REGION = data.aws_region.current.name
   }
   vpc_id = data.aws_vpc.default-vpc.id
   app-name = "demo-app"

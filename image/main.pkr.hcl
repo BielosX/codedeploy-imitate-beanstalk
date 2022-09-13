@@ -28,6 +28,14 @@ build {
     source = "../fluent-bit/fluent-bit.conf"
     destination = "/tmp/fluent-bit.conf"
   }
+  provisioner "file" {
+    source = "fluent-bit-init.service"
+    destination = "/tmp/fluent-bit-init.service"
+  }
+  provisioner "file" {
+    source = "fluent-bit-init.sh"
+    destination = "/tmp/fluent-bit-init.sh"
+  }
   provisioner "shell" {
     script = "install.sh"
     execute_command = "echo 'packer' | sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
