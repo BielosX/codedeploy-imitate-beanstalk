@@ -24,6 +24,10 @@ chmod +x /opt/fluent-bit-init.sh
 systemctl enable fluent-bit
 systemctl enable fluent-bit-init
 
+adduser app --user-group
+adduser proxy --user-group
+mkdir -p /home/proxy/logs
+
 pip3 install virtualenv
 pip3 install boto3
 CODE_DEPLOY_URL="https://aws-codedeploy-$REGION.s3.$REGION.amazonaws.com/latest/install"
