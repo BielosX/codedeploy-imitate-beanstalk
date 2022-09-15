@@ -161,6 +161,13 @@ resource "aws_launch_template" "app-launch-template" {
   iam_instance_profile {
     arn = aws_iam_instance_profile.app-instance-profile.arn
   }
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens = "required"
+    http_protocol_ipv6 = "disabled"
+    http_put_response_hop_limit = 1
+    instance_metadata_tags = "enabled"
+  }
 }
 
 locals {

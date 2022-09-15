@@ -16,8 +16,12 @@ data "aws_subnets" "default-subnets" {
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
+locals {
+  app-name = "demo-app"
+}
+
 resource "aws_s3_bucket" "demo-app-data-bucket" {
-  bucket = "demo-app-data-${data.aws_region.current.name}-${data.aws_caller_identity.current.account_id}"
+  bucket = "${local.app-name}-data-${data.aws_region.current.name}-${data.aws_caller_identity.current.account_id}"
   force_destroy = true
 }
 
@@ -29,6 +33,8 @@ resource "aws_s3_bucket_acl" "demo-app-bucket-acl" {
 locals {
   first_subnet = data.aws_subnets.default-subnets.ids[0]
   second_subnet = data.aws_subnets.default-subnets.ids[1]
+  region = data.aws_region.current.name
+  account_id = data.aws_caller_identity.current.account_id
 }
 
 data "aws_iam_policy_document" "ec2-assume-role" {
@@ -43,15 +49,42 @@ data "aws_iam_policy_document" "ec2-assume-role" {
   }
 }
 
+data "aws_iam_policy_document" "ec2-policy" {
+  version = "2012-10-17"
+  statement {
+    sid = "AllowDownloadBundle"
+    effect = "Allow"
+    actions = [
+      "s3:List*",
+      "s3:Get*"
+    ]
+    resources = ["arn:aws:s3:::${local.app-name}-artifacts-${local.region}-${local.account_id}/*"]
+  }
+  statement {
+    sid = "AllowCloudWatchLogs"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:TagLogGroup",
+      "logs:DescribeLogGroups",
+      "logs:DescribeLogStreams"
+    ]
+    resources = [
+      "arn:aws:logs:${local.region}:${local.account_id}:log-group:/${local.app-name}/*",
+      "arn:aws:logs:${local.region}:${local.account_id}:log-group:/${local.app-name}/*:log-stream:*"
+    ]
+  }
+}
+
 resource "aws_iam_role" "app-role" {
   assume_role_policy = data.aws_iam_policy_document.ec2-assume-role.json
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/CloudWatchFullAccess",
-    "arn:aws:iam::aws:policy/AmazonS3FullAccess",
-    "arn:aws:iam::aws:policy/AWSCodeDeployFullAccess",
-    "arn:aws:iam::aws:policy/AmazonEC2FullAccess",
-    "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
-  ]
+  inline_policy {
+    name = "${local.app-name}-ec2-policy"
+    policy = data.aws_iam_policy_document.ec2-policy.json
+  }
+  managed_policy_arns = ["arn:aws:iam::aws:policy/AmazonSQSFullAccess"]
 }
 
 
@@ -95,8 +128,8 @@ module "code-deploy" {
     AWS_DEFAULT_REGION = data.aws_region.current.name
   }
   vpc_id = data.aws_vpc.default-vpc.id
-  app-name = "demo-app"
-  app-image-name = "demo-app-image"
+  app-name = local.app-name
+  app-image-name = "${local.app-name}-image"
   app-health-path = "/health"
   max-instances = 1
   min-instances = 1

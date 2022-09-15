@@ -21,6 +21,13 @@ cp /tmp/fluent-bit-init.service /usr/lib/systemd/system
 cp /tmp/fluent-bit-init.sh /opt
 chmod +x /opt/fluent-bit-init.sh
 
+mkdir -p /usr/lib/systemd/system/fluent-bit.service.d
+
+cat <<EOT > /usr/lib/systemd/system/fluent-bit.service.d/00_env.conf
+[Service]
+EnvironmentFile=/etc/fluent-bit/variables.env
+EOT
+
 systemctl enable fluent-bit
 systemctl enable fluent-bit-init
 

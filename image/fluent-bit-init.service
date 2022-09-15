@@ -1,5 +1,6 @@
 [Unit]
 Wants=network-online.target
+Before=fluent-bit.service
 After=network-online.target
 
 [Service]
